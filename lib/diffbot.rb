@@ -1,7 +1,12 @@
+require "hashie"
 require "hashie/trash"
 require "diffbot/coercible_hash"
+require "diffbot/stats"
+require "diffbot/array"
+require "diffbot/text"
 require "diffbot/request"
 require "diffbot/article"
+require "diffbot/corpus"
 require "diffbot/frontpage"
 require "diffbot/product"
 

@@ -1,4 +1,5 @@
 require "yajl"
+require "addressable/uri"
 
 module Diffbot
   # Representation of an article (ie a blog post or similar). This class offers
@@ -6,6 +7,10 @@ module Diffbot
   # the article as analyzed by Diffbot.
   class Article < Hashie::Trash
     extend CoercibleHash
+    include TextFeatures
+
+    include Hashie::Extensions::DeepFetch
+    include Hashie::Extensions::IgnoreUndeclared
 
     # Public: Fetch an article from a URL.
     #
@@ -48,6 +53,35 @@ module Diffbot
       "http://www.diffbot.com/api/article"
     end
 
+    # Public: meta.keywords of the article.
+    def keywords
+      deep_fetch("meta","keywords") { |key| nil }
+    end
+
+    # Public: stats.confidence value.
+    def confidence
+      stats.confidence
+    end
+
+    # Public: host portion of URL
+    def site
+      uri = Addressable::URI.parse(url)
+      uri.normalize.host.to_s
+    end
+
+    # Public: URL of the article, stripped of query/fragment/port info.
+    def base_url
+      uri          = Addressable::URI.parse(url)
+      uri.query    = nil
+      uri.port     = nil
+      uri.fragment = nil
+
+      uri.normalize.to_s
+    end
+
+    # Public: Label of the article.
+    property :label
+
     # Public: URL of the article.
     property :url
 
@@ -62,6 +96,9 @@ module Diffbot
 
     # Public: Date of the article (as a string).
     property :date
+
+    # Public: Doc ID of the article (as an integer)
+    property :doc_id, from: :docId, with: lambda { |v| v.to_i }
 
     # Returns the (spoken/human) language of the submitted URL, using two-letter
     # ISO 639-1 nomenclature.
@@ -152,7 +189,8 @@ module Diffbot
 
     class Stats < Hashie::Trash
       property :fetch_time, from: :fetchTime
-      property :confidence
+      property :confidence, transform_with: lambda { |v| v.to_f }
+      property :rules
     end
 
     # Public: Returns an object with the following attributes:
@@ -176,6 +214,9 @@ module Diffbot
     # Public: If there was an error in the request, this will contain the error
     # code.
     property :error_code, from: :errorCode
+
+    # Public: rules
+    property :rules
 
     # This represents the parameters you can pass to Diffbot to configure a
     # given request. These are either set globally with Diffbot.article_defaults
@@ -201,6 +242,11 @@ module Diffbot
     property :next_page, from: :nextPage
     property :resolved_url
     property :type
+
+    # Public: pacify the monster
+    def inspect
+      "<Article #{title}>"
+    end
 
     class RequestParams < Hashie::Trash
       # Public: Set to true to return HTML instead of plain-text.
